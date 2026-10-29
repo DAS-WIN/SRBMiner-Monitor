@@ -1,0 +1,55 @@
+name: Build and verify
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  core-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet test tests/SrbMinerMonitor.Tests -c Release
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: ./scripts/Verify-ReleaseContent.ps1
+        shell: pwsh
+      - run: dotnet build SrbMinerMonitor.slnx -c Release
+      - run: ./scripts/Smoke-Windows.ps1
+        shell: pwsh
+      - run: ./scripts/Publish-Windows.ps1
+        shell: pwsh
+      - run: ./scripts/Verify-PublishedStartup.ps1
+        shell: pwsh
+      - name: Publish verified release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: ./scripts/Publish-GitHubRelease.ps1
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-screenshots
+          path: |
+            artifacts/screenshots/*.png
+            artifacts/screenshots/*.log
+            artifacts/screenshots/*.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-validation-and-portable
+          path: artifacts/*.zip

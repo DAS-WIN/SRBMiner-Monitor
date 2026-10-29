@@ -1,0 +1,48 @@
+<UserControl x:Class="SrbMinerMonitor.App.Views.SettingsView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+ <DockPanel>
+  <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Padding="0,15,0,18" Margin="0,16,0,0">
+   <DockPanel><StackPanel DockPanel.Dock="Right" Orientation="Horizontal"><Button Content="取消變更" Command="{Binding CancelSettingsCommand}" Margin="0,0,10,0"/><Button Content="儲存設定" Command="{Binding SaveCommand}" Margin="0,0,10,0"/><Button Content="{Binding SaveStartText}" Command="{Binding SaveRestartCommand}" ToolTip="{Binding StartRequirement}" Style="{StaticResource PrimaryButton}"/></StackPanel><TextBlock Text="{Binding SettingsFooterHint}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,0,10,0"/></DockPanel>
+  </Border>
+  <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="0,0,8,0">
+   <TextBlock Text="挖礦設定" FontSize="23" FontWeight="SemiBold"/><TextBlock Text="使用自己的 BAT 啟動礦工，所有挖礦參數都以 BAT 內容為準。" Style="{StaticResource Muted}" Margin="0,8,0,20"/>
+   <Border Style="{StaticResource Panel}" Margin="0,0,0,18"><StackPanel>
+    <TextBlock Text="指定 BAT" Style="{StaticResource SectionTitle}"/>
+    <ComboBox x:Name="BatchModeSelector" ItemsSource="{Binding Settings.BatchModes}" SelectedItem="{Binding Settings.BatchInputMode}" Width="240" HorizontalAlignment="Left"/>
+    <StackPanel Visibility="{Binding Settings.IsExistingBatch, Converter={StaticResource BoolVisibility}}" Margin="0,16,0,0">
+     <DockPanel><Button Content="選擇 BAT…" Command="{Binding BrowseBatchCommand}" DockPanel.Dock="Right" Margin="10,0,0,0"/><TextBox Text="{Binding Settings.BatchFile, Mode=OneWay}" IsReadOnly="True"/></DockPanel>
+     <TextBlock Text="{Binding Settings.BatchHint}" Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+     <Button Content="建立監控副本…" Command="{Binding CreateMonitoringBatchCommand}" Foreground="{StaticResource AccentBrush}" Margin="0,12,0,0" HorizontalAlignment="Left"/>
+     <TextBlock Text="若原 BAT 尚未啟用 API，可建立副本；原 BAT 保留。" Style="{StaticResource Muted}" Margin="0,10,0,0"/>
+    </StackPanel>
+    <StackPanel Visibility="{Binding Settings.IsPastedBatch, Converter={StaticResource BoolVisibility}}" Margin="0,16,0,0">
+     <TextBlock Text="礦工資料夾" Style="{StaticResource Muted}" Margin="0,0,0,7"/>
+     <DockPanel><Button Content="選擇資料夾…" Command="{Binding BrowseDirectoryCommand}" DockPanel.Dock="Right" Margin="10,0,0,0"/><TextBox Text="{Binding Settings.BatchDirectory, UpdateSourceTrigger=PropertyChanged}"/></DockPanel>
+     <TextBlock Text="選擇 SRBMiner-MULTI.exe 所在資料夾，讓 %~dp0 與 logs 等相對路徑正常運作。" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,8,0,12" FontSize="11"/>
+     <TextBlock Text="貼上自己的 BAT 內容" Style="{StaticResource Muted}" Margin="0,0,0,7"/>
+     <TextBox x:Name="BatchContentEditor" Text="{Binding Settings.BatchContent, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" AcceptsTab="True" Height="270" FontFamily="Consolas" FontSize="12" TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
+     <TextBlock Text="啟動時自動補上監控 API 參數，其餘挖礦參數保留；礦工在背景執行。" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+    </StackPanel>
+    <TextBlock Text="{Binding StartRequirement}" Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" Margin="0,16,0,0"/>
+   </StackPanel></Border>
+   <Border Style="{StaticResource Panel}" Margin="0,18,0,0"><StackPanel>
+    <TextBlock Text="非預期退出處理" Style="{StaticResource SectionTitle}"/>
+    <CheckBox x:Name="UnexpectedExitRestartOption" Content="礦工非預期退出後自動重啟" IsChecked="{Binding Settings.RestartOnUnexpectedExit}"/>
+    <TextBlock Text="儲存後立即套用，不需啟用定時重啟。礦工意外退出後等待 10 秒再啟動；若啟動失敗，會倒數後再次嘗試。" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+    <TextBlock Text="定時重啟已啟用時：意外退出後改依排程的「停止後等待時間」倒數重啟，成功啟動後重新計算運行時間。兩項同時啟用只會啟動一個礦工。" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+    <TextBlock Text="手動停止會取消待重啟動作。重新開啟監控程式不會自行開始挖礦。" Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+   </StackPanel></Border>
+   <Border Style="{StaticResource Panel}"><StackPanel>
+    <TextBlock Text="監控設定" Style="{StaticResource SectionTitle}"/>
+    <Grid><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="20"/><ColumnDefinition/></Grid.ColumnDefinitions>
+     <StackPanel><TextBlock Text="礦機名稱" Style="{StaticResource Muted}" Margin="0,0,0,7"/><TextBox Text="{Binding Settings.RigName, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+     <StackPanel Grid.Column="2"><TextBlock Text="API 連接埠" Style="{StaticResource Muted}" Margin="0,0,0,7"/><TextBox Text="{Binding Settings.ApiPort, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+    </Grid>
+    <TextBlock Text="硬體資訊更新間隔" Style="{StaticResource Muted}" Margin="0,16,0,7"/>
+    <StackPanel Orientation="Horizontal"><TextBox x:Name="RefreshIntervalValue" Width="120" Text="{Binding Settings.RefreshValue, UpdateSourceTrigger=PropertyChanged}"/><ComboBox x:Name="RefreshIntervalUnit" Width="100" Margin="10,0,0,0" ItemsSource="{Binding Settings.RefreshUnits}" SelectedItem="{Binding Settings.RefreshUnit}"/></StackPanel>
+    <TextBlock Text="預設 1 分鐘。算力、功耗、溫度、風扇與時脈依此間隔統一更新；最近成功分享及 Accepted 始終即時更新。" TextWrapping="Wrap" Foreground="{StaticResource AccentBrush}" Margin="0,12,0,0"/>
+    <TextBlock Text="儲存設定即可套用更新間隔，無須重啟礦工。" Style="{StaticResource Muted}" Margin="0,8,0,0"/>
+    <TextBlock Text="{Binding ApiStatus}" Style="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,10,0,0"/>
+   </StackPanel></Border>
+  </StackPanel></ScrollViewer>
+ </DockPanel>
+</UserControl>

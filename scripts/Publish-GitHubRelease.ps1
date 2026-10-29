@@ -1,0 +1,38 @@
+$ErrorActionPreference = 'Stop'
+if (-not $env:GITHUB_REPOSITORY -or -not $env:GITHUB_SHA) { throw 'Run this publishing step from GitHub Actions.' }
+$projectRoot = Split-Path $PSScriptRoot -Parent
+Push-Location $projectRoot
+try {
+    [xml]$project = Get-Content src/SrbMinerMonitor.App/SrbMinerMonitor.App.csproj
+    $version = [string]$project.Project.PropertyGroup.Version
+    $tag = "v$version"
+    $portable = "artifacts/SRBMinerMonitor-$version-win-x64.zip"
+    $source = "artifacts/SRBMinerMonitor-$version-source.zip"
+    $validation = "artifacts/SRBMinerMonitor-$version-Windows-validation.zip"
+    if (-not (Test-Path $portable)) { throw 'Portable package is missing.' }
+    foreach ($mode in @('normal')) {
+        $log = "artifacts/screenshots/published-$mode-startup.log"
+        if (-not (Test-Path $log) -or -not (Select-String -Path $log -SimpleMatch 'STARTUP VERIFICATION PASSED')) {
+            throw "Cannot publish: $mode startup verification did not pass."
+        }
+    }
+    git archive --format=zip --prefix=SRBMinerMonitor/ -o $source HEAD
+    if ($LASTEXITCODE -ne 0) { throw 'Source archive failed.' }
+    $validationFiles = @(Get-ChildItem artifacts/screenshots -File | Where-Object { $_.Extension -in @('.png', '.log', '.txt') })
+    if ($validationFiles.Count -eq 0) { throw 'Validation results are missing.' }
+    Compress-Archive -LiteralPath $validationFiles.FullName -DestinationPath $validation -Force
+    & ./scripts/Verify-ReleaseContent.ps1 -Archives @($portable, $source, $validation)
+    $checks = @($portable, $source, $validation) | ForEach-Object {
+        $hash = (Get-FileHash $_ -Algorithm SHA256).Hash.ToLowerInvariant()
+        "$hash  $([System.IO.Path]::GetFileName($_))"
+    }
+    $checks | Set-Content artifacts/SHA256SUMS.txt -Encoding utf8
+    $publishedTags = @(gh api "repos/$env:GITHUB_REPOSITORY/releases?per_page=100" --paginate --jq '.[].tag_name')
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot check existing releases.' }
+    if ($publishedTags -contains $tag) {
+        Write-Output "Release $tag already exists; keeping its published assets."
+        return
+    }
+    gh release create $tag $portable $source $validation artifacts/SHA256SUMS.txt --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "SRBMiner Monitor $version" --notes-file "docs/RELEASE-NOTES-$version.md" --latest
+    if ($LASTEXITCODE -ne 0) { throw 'GitHub release upload failed.' }
+} finally { Pop-Location }
